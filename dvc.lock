@@ -1,0 +1,180 @@
+schema: '2.0'
+stages:
+  make_dataset:
+    cmd: python src/data/make_dataset.py
+    deps:
+    - path: data/raw/2015_Green_Taxi_Trip_Data.csv
+      hash: md5
+      md5: 6db3bf7cd76d720c1897563138bb9923
+      size: 124928071
+    - path: src/data/make_dataset.py
+      hash: md5
+      md5: 87a9fdf926d3e00f19feb561a254a746
+      size: 3147
+    params:
+      params.yaml:
+        make_dataset:
+          vendor_codes:
+          - 1
+          - 2
+          fare_min: 2.5
+          fare_max: 200
+          distance_min: 0.1
+          distance_max: 50
+          passenger_min: 1
+          passenger_max: 6
+          rate_code_min: 1
+          rate_code_max: 6
+          latitude_min: 40.4
+          latitude_max: 41.0
+          longitude_min: -74.3
+          longitude_max: -73.6
+          sample_size: 50000
+          random_state: 42
+    outs:
+    - path: data/interim/cleaned_data.csv
+      hash: md5
+      md5: 861acf9065979c13e481a8ad3040a5b1
+      size: 8856122
+  build_features:
+    cmd: python src/features/build_features.py
+    deps:
+    - path: data/interim/cleaned_data.csv
+      hash: md5
+      md5: 861acf9065979c13e481a8ad3040a5b1
+      size: 8856122
+    - path: src/features/build_features.py
+      hash: md5
+      md5: ae21fde36050fff7af9bd9c1c49d84d9
+      size: 2723
+    params:
+      params.yaml:
+        build_features:
+          pickup_datetime_format: '%m/%d/%Y %I:%M:%S %p'
+          target: Fare_amount
+          test_size: 0.2
+          random_state: 42
+          features:
+          - vendorid
+          - rate_code
+          - Pickup_longitude
+          - Pickup_latitude
+          - Dropoff_longitude
+          - Dropoff_latitude
+          - Passenger_count
+          - Trip_distance
+          - Trip_type
+          - pickup_hour
+          - pickup_weekday
+    outs:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: 654eccb9f0b4fbd1409303b65229bba5
+      size: 1038516
+    - path: data/processed/train.csv
+      hash: md5
+      md5: fbe3c68f3f3a46f181c822378cbe9679
+      size: 4152131
+  train_model:
+    cmd: python src/models/train_model.py
+    deps:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: fbe3c68f3f3a46f181c822378cbe9679
+      size: 4152131
+    - path: src/models/train_model.py
+      hash: md5
+      md5: 68ff9af458e08bdc509be4276987de08
+      size: 4523
+    params:
+      params.yaml:
+        train_model:
+          target: Fare_amount
+          random_state: 42
+          cv_folds: 5
+          rf_n_estimators: 100
+          rf_max_depth: 10
+          rf_min_samples_leaf: 20
+          xgb_n_estimators: 100
+    outs:
+    - path: models/untrained_pipeline.joblib
+      hash: md5
+      md5: e6139936ab2cfd8448a090b1d4243535
+      size: 1846
+  tune_model:
+    cmd: python src/models/tune_model.py
+    deps:
+    - path: data/processed/train.csv
+      hash: md5
+      md5: fbe3c68f3f3a46f181c822378cbe9679
+      size: 4152131
+    - path: models/best_model_name.txt
+      hash: md5
+      md5: 3a9d79e0ebc92f982454266a27d1e9a4
+      size: 13
+    - path: models/untrained_pipeline.joblib
+      hash: md5
+      md5: e6139936ab2cfd8448a090b1d4243535
+      size: 1846
+    - path: src/models/tune_model.py
+      hash: md5
+      md5: 9235c9bd524118b76648b5f121dc47c4
+      size: 3093
+    params:
+      params.yaml:
+        tune_model:
+          target: Fare_amount
+          random_state: 42
+          cv_folds: 3
+          n_iter: 4
+          param_grids:
+            Ridge Regression:
+              Model__alpha:
+              - 0.1
+              - 1
+              - 10
+            Random Forest:
+              Model__n_estimators:
+              - 30
+              - 50
+              Model__max_depth:
+              - 8
+              - 10
+              Model__min_samples_leaf:
+              - 20
+              - 50
+            XGBoost:
+              Model__n_estimators:
+              - 100
+              - 200
+              Model__max_depth:
+              - 5
+              - 7
+    outs:
+    - path: models/best_model.joblib
+      hash: md5
+      md5: 29abf1085ec7ca0edf8e1b7810494ab5
+      size: 3118179
+  evaluate_model:
+    cmd: python src/models/evaluate_model.py
+    deps:
+    - path: data/processed/test.csv
+      hash: md5
+      md5: 654eccb9f0b4fbd1409303b65229bba5
+      size: 1038516
+    - path: models/best_model.joblib
+      hash: md5
+      md5: 29abf1085ec7ca0edf8e1b7810494ab5
+      size: 3118179
+    - path: src/models/evaluate_model.py
+      hash: md5
+      md5: 36c197d4f6c13f82efc6180c4e57fb96
+      size: 2254
+    params:
+      params.yaml:
+        train_model.target: Fare_amount
+    outs:
+    - path: reports/metrics.json
+      hash: md5
+      md5: dd1e4d3fc1a7e924e9f87af80b620130
+      size: 109
