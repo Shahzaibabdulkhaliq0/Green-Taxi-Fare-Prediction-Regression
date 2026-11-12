@@ -1,0 +1,39 @@
+# params.yaml
+# All settings of the project live here. Change a value here, run "dvc repro", and only the affected stages run again.
+
+# Cleaning rules (make_dataset.py)
+make_dataset:
+  vendor_codes: [1, 2]        # valid vendor codes
+  fare_min: 2.5               # base fare in dollars
+  fare_max: 200               # above this, a fare is treated as an error
+  distance_min: 0.1           # miles
+  distance_max: 50            # miles
+  passenger_min: 1
+  passenger_max: 6
+  rate_code_min: 1            # valid rate codes are 1 to 6 (99 = unknown)
+  rate_code_max: 6
+  latitude_min: 40.4          # NYC area
+  latitude_max: 41.0
+  longitude_min: -74.3
+  longitude_max: -73.6
+  sample_size: 50000          # rows taken randomly from the cleaned data
+  random_state: 42            # same random rows every run
+
+# Features and train/test split (build_features.py)
+build_features:
+  pickup_datetime_format: "%m/%d/%Y %I:%M:%S %p"
+  target: Fare_amount
+  test_size: 0.2
+  random_state: 42
+  features:
+    - vendorid
+    - rate_code
+    - Pickup_longitude
+    - Pickup_latitude
+    - Dropoff_longitude
+    - Dropoff_latitude
+    - Passenger_count
+    - Trip_distance
+    - Trip_type
+    - pickup_hour
+    - pickup_weekday
