@@ -1,0 +1,5 @@
+[core]
+    remote = storage
+['remote "storage"']
+    url = s3://green-taxi-v4-dvc-010928224571/dvc
+    region = eu-north-1
