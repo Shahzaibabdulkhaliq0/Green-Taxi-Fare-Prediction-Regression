@@ -1,0 +1,11 @@
+.git
+.dvc
+data
+reports
+notebooks
+tests
+__pycache__
+*.pyc
+.pytest_cache
+models/*
+!models/best_model.joblib
