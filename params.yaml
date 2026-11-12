@@ -47,3 +47,20 @@ train_model:
   rf_max_depth: 10
   rf_min_samples_leaf: 20
   xgb_n_estimators: 100
+
+# Hyperparameter tuning (tune_model.py)
+tune_model:
+  target: Fare_amount
+  random_state: 42
+  cv_folds: 3
+  n_iter: 4
+  param_grids:
+    Ridge Regression:
+      Model__alpha: [0.1, 1, 10]
+    Random Forest:
+      Model__n_estimators: [30, 50]
+      Model__max_depth: [8, 10]
+      Model__min_samples_leaf: [20, 50]
+    XGBoost:
+      Model__n_estimators: [100, 200]
+      Model__max_depth: [5, 7]

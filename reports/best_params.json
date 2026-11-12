@@ -1,0 +1,9 @@
+{
+    "model": "Random Forest",
+    "best_params": {
+        "Model__n_estimators": 50,
+        "Model__min_samples_leaf": 20,
+        "Model__max_depth": 10
+    },
+    "best_cv_rmse": 2.5417400986718004
+}
