@@ -12,6 +12,8 @@
    env:
      AWS_REGION: eu-north-1
      ECR_REPOSITORY: green-taxi-v4-api
+     ECS_CLUSTER: green-taxi-v4-cluster
+     ECS_SERVICE: green-taxi-v4-api-service
 
    jobs:
      test-build-push:
@@ -77,3 +79,20 @@
 
          - name: Push image to ECR
            run: docker push "${{ steps.build-image.outputs.image }}"
+         
+         - name: Render ECS task definition
+           id: task-def
+           uses: aws-actions/amazon-ecs-render-task-definition@v1
+           with:
+             task-definition: ecs-task-definition.json
+             container-name: green-taxi-v4-api
+             image: ${{ steps.build-image.outputs.image }}
+
+         - name: Deploy to ECS
+           uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+           with:
+             task-definition: ${{ steps.task-def.outputs.task-definition }}
+             service: ${{ env.ECS_SERVICE }}
+             cluster: ${{ env.ECS_CLUSTER }}
+             wait-for-service-stability: true
+             wait-max-delay-seconds: 15
