@@ -32,7 +32,7 @@
              cache-dependency-path: requirements-api.txt
 
          - name: Install packages
-           run: pip install -r requirements-api.txt pytest httpx2 "dvc[s3]"
+           run: pip install -r requirements-api.txt pytest httpx "dvc[s3]"
 
          - name: Log in to AWS (OIDC)
            uses: aws-actions/configure-aws-credentials@v6
