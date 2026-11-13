@@ -15,7 +15,10 @@
       "image": "010928224571.dkr.ecr.eu-north-1.amazonaws.com/green-taxi-v4-api:latest",
       "essential": true,
       "portMappings": [
-        { "containerPort": 8000, "protocol": "tcp" }
+        {
+          "containerPort": 8000,
+          "protocol": "tcp"
+        }
       ],
       "logConfiguration": {
         "logDriver": "awslogs",
