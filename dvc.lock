@@ -84,8 +84,8 @@ stages:
       size: 4152131
     - path: src/models/train_model.py
       hash: md5
-      md5: 68ff9af458e08bdc509be4276987de08
-      size: 4523
+      md5: f12830703a6daf72c23d10711e4065d6
+      size: 4692
     params:
       params.yaml:
         train_model:
@@ -118,8 +118,8 @@ stages:
       size: 1846
     - path: src/models/tune_model.py
       hash: md5
-      md5: 9235c9bd524118b76648b5f121dc47c4
-      size: 3093
+      md5: 0eba7c1db7977017e9fa4fdd7a3fe472
+      size: 3173
     params:
       params.yaml:
         tune_model:
@@ -153,8 +153,8 @@ stages:
     outs:
     - path: models/best_model.joblib
       hash: md5
-      md5: 29abf1085ec7ca0edf8e1b7810494ab5
-      size: 3118179
+      md5: 23e233069d43e501fc9e1d0313c60584
+      size: 3118147
   evaluate_model:
     cmd: python src/models/evaluate_model.py
     deps:
@@ -164,17 +164,17 @@ stages:
       size: 1038516
     - path: models/best_model.joblib
       hash: md5
-      md5: 29abf1085ec7ca0edf8e1b7810494ab5
-      size: 3118179
+      md5: 23e233069d43e501fc9e1d0313c60584
+      size: 3118147
     - path: src/models/evaluate_model.py
       hash: md5
-      md5: 36c197d4f6c13f82efc6180c4e57fb96
-      size: 2254
+      md5: 7dca5baeac4cdbdacde29ca2fbdcd8eb
+      size: 2320
     params:
       params.yaml:
         train_model.target: Fare_amount
     outs:
     - path: reports/metrics.json
       hash: md5
-      md5: dd1e4d3fc1a7e924e9f87af80b620130
-      size: 109
+      md5: 55e4f075e9b499fca5bb18feeeeb98c0
+      size: 113
