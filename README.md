@@ -1,61 +1,75 @@
 # Green Taxi Fare Prediction
 
-End-to-end machine learning project: predict the fare of a NYC green taxi trip (regression, target `Fare_amount`) and serve the model as a REST API inside Docker.
+End-to-end machine learning project that predicts the fare of a NYC green taxi trip (regression, target `Fare_amount`) and serves predictions through a FastAPI REST API packaged with Docker.
 
-Data: NYC TLC 2015 Green Taxi Trip Data.
+**Dataset:** NYC TLC 2015 Green Taxi Trip Data.
 
-## Results
+## Model results
 
-Models were compared with 5-fold cross-validation on the training set. The best model by CV RMSE was tuned with `RandomizedSearchCV`. The test set was used only for the final report.
+Models were compared using 5-fold cross-validation on the training set. The model-selection rule uses cross-validation RMSE, not test-set performance. The selected Random Forest was then tuned with `RandomizedSearchCV`; the test set was reserved for final evaluation.
 
-| Model | CV RMSE | Test MAE | Test RMSE | Test R² |
-|---|---|---|---|---|
-| Random Forest | 2.51 | 1.25 | 2.51 | 0.914 |
-| XGBoost | 2.61 | 1.19 | 2.32 | 0.926 |
-| Ridge Regression | 2.76 | 1.48 | 2.76 | 0.895 |
+### Model comparison
 
-**Final model: tuned Random Forest** (test MAE $1.25, RMSE $2.52, R² 0.913).
+| Model | CV RMSE Mean | CV RMSE Std |
+|---|---:|---:|
+| Random Forest | 2.5064 | 0.2470 |
+| XGBoost | 2.6075 | 0.2977 |
+| Ridge Regression | 2.7559 | 0.2901 |
 
-Notes:
-- The model is chosen by CV score only, never by the test score. XGBoost is better on the test set, but its CV gap to Random Forest (2.51 vs 2.61) is smaller than the fold-to-fold spread (about 0.25 to 0.30), so the selection rule was kept.
-- Tuning did not give a meaningful gain (test RMSE 2.52 vs 2.51 before tuning).
+### Final tuned model
 
-## Features
+- **Selected model:** Tuned Random Forest
+- **Best tuning CV RMSE:** 2.5417
+- **Test MAE:** 1.2529
+- **Test RMSE:** 2.5205
+- **Test R²:** 0.9130
 
-11 inputs: `vendorid`, `rate_code`, pickup and dropoff longitude/latitude, `Passenger_count`, `Trip_distance`, `Trip_type`, `pickup_hour`, `pickup_weekday`.
+The model is selected using cross-validation only. XGBoost had better test metrics in the comparison, but the selection rule was intentionally not changed based on test-set results.
 
-Data leakage control:
-- `Total_amount`, `Tip_amount`, `Tolls_amount`, `Extra`, `MTA_tax`, `Improvement_surcharge`, `Payment_type` and the dropoff time are not used. They are known only after the trip, or are built from the fare itself.
-- `Trip_distance` is used on purpose: the user gives an estimated distance when asking for a fare.
-- Preprocessing (`SimpleImputer`, `StandardScaler`) is inside the scikit-learn `Pipeline`, so it is fitted on training data only.
+## Features and leakage control
 
-## Pipeline (DVC)
+The model uses 11 input features: `vendorid`, `rate_code`, pickup and dropoff longitude/latitude, `Passenger_count`, `Trip_distance`, `Trip_type`, `pickup_hour`, and `pickup_weekday`.
 
-All settings live in `params.yaml`. Nothing is hardcoded in the scripts.
+The following fields are excluded to prevent target leakage because they are only known after the trip or are derived from the fare: `Total_amount`, `Tip_amount`, `Tolls_amount`, `Extra`, `MTA_tax`, `Improvement_surcharge`, `Payment_type`, and dropoff time.
 
-| Stage | Script | Output |
+`Trip_distance` is included because an estimated distance can be supplied when requesting a fare. Preprocessing (imputation and scaling) is contained in the scikit-learn pipeline and is fitted on training data only.
+
+## ML pipeline (DVC)
+
+All pipeline settings are stored in `params.yaml`.
+
+| Stage | Script | Main output |
 |---|---|---|
-| make_dataset | `src/data/make_dataset.py` | cleaned data |
-| build_features | `src/features/build_features.py` | train/test files |
-| train_model | `src/models/train_model.py` | model comparison, best model name |
-| tune_model | `src/models/tune_model.py` | tuned model, best params |
-| evaluate_model | `src/models/evaluate_model.py` | `reports/metrics.json` |
+| `make_dataset` | `src/data/make_dataset.py` | Cleaned dataset |
+| `build_features` | `src/features/build_features.py` | Train/test datasets |
+| `train_model` | `src/models/train_model.py` | Model comparison and selected model |
+| `tune_model` | `src/models/tune_model.py` | Tuned model and best parameters |
+| `evaluate_model` | `src/models/evaluate_model.py` | `reports/metrics.json` |
+
+The raw dataset and model artifacts are tracked with DVC. The repository configures an S3 DVC remote; access to that remote requires suitable AWS credentials.
+
+To reproduce the pipeline in an environment with the required dependencies and AWS access:
 
 ```bash
 pip install -r requirements.txt
+dvc pull
 dvc repro
 ```
 
-The raw CSV is tracked with DVC (the `.dvc` pointer file is in Git). No remote storage is configured yet, so place the file at `data/raw/2015_Green_Taxi_Trip_Data.csv` manually.
-
 ## API
+
+The FastAPI application exposes:
+
+- `GET /health` — health check.
+- `POST /predict` — predicts the fare. Invalid values, including locations outside the configured NYC bounds, are rejected with HTTP 422.
+
+Run locally:
 
 ```bash
 uvicorn src.api.main:app --reload
 ```
 
-- `GET /health` returns `{"status": "ok"}`
-- `POST /predict` returns the predicted fare. Wrong values (for example a location outside NYC) are rejected with status 422. The limits come from `params.yaml`.
+Example request:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/predict \
@@ -63,46 +77,72 @@ curl -X POST http://127.0.0.1:8000/predict \
   -d '{"vendorid":2,"rate_code":1,"Pickup_longitude":-73.95,"Pickup_latitude":40.75,"Dropoff_longitude":-73.98,"Dropoff_latitude":40.76,"Passenger_count":1,"Trip_distance":3.5,"Trip_type":1,"pickup_hour":14,"pickup_weekday":2}'
 ```
 
-Example response: `{"predicted_fare": 17.28, "currency": "USD"}`
+Example response:
+
+```json
+{"predicted_fare": 17.28, "currency": "USD"}
+```
+
+The response above is an example; the actual prediction depends on the loaded model.
 
 ## Tests
+
+Run the API test suite:
 
 ```bash
 pytest -v
 ```
 
-7 API tests: health check, valid prediction, longer trip costs more, and rejection of wrong vendor, negative distance, location outside NYC and missing field.
+The suite contains 7 tests covering the health endpoint, valid predictions, expected distance/fare behavior, and invalid vendor, distance, location, and missing-field inputs.
 
 ## Docker
 
-The model file `models/best_model.joblib` must exist before the build (run `dvc repro` first).
+The model artifact `models/best_model.joblib` must be available before building the image.
 
 ```bash
 docker build -t green-taxi-api:local .
 docker run --rm -p 8000:8000 green-taxi-api:local
 ```
 
+## CI/CD and AWS deployment
+
+GitHub Actions workflow `.github/workflows/ci.yml` runs on pushes to `main` and can also be started manually. It:
+
+1. Installs the API dependencies and test tools.
+2. Authenticates to AWS using GitHub Actions OIDC.
+3. Pulls the model artifact from the configured DVC remote.
+4. Runs the pytest suite.
+5. Builds the Docker image and smoke-tests `/health` and `/predict`.
+6. Pushes the image to Amazon ECR.
+7. Updates the Amazon ECS task definition and deploys the service to **ECS Fargate**, waiting for service stability.
+
+The ECS task definition sends container logs to the CloudWatch log group `/ecs/green-taxi-v4-api`.
+
+The GitHub Actions deployment workflow has completed successfully in the repository. This confirms the pipeline completed at that run; it does not by itself guarantee that the live API is currently healthy.
+
 ## Project structure
 
 ```
 data/         raw data pointer, interim and processed data (DVC)
-models/       trained models (DVC)
-reports/      metrics and comparison tables
+models/       trained model artifacts (DVC)
+reports/      metrics, best parameters, and model comparison
 src/
-  data/       cleaning script
-  features/   feature building and train/test split
-  models/     train, tune, evaluate, predict scripts
-  api/        FastAPI app
+  data/       dataset cleaning
+  features/   feature engineering and train/test split
+  models/     training, tuning, evaluation, prediction
+  api/        FastAPI application
 tests/        API tests
-params.yaml   all settings
-dvc.yaml      pipeline definition
+params.yaml   pipeline and validation settings
+dvc.yaml      DVC pipeline definition
 Dockerfile
+ecs-task-definition.json
+.github/workflows/ci.yml
 ```
 
 ## Tech stack
 
-Python, pandas, scikit-learn, XGBoost, DVC, FastAPI, pytest, Docker.
+Python, pandas, scikit-learn, XGBoost, DVC with S3 storage, FastAPI, pytest, Docker, GitHub Actions, AWS IAM OIDC, Amazon ECR, Amazon ECS Fargate, and Amazon CloudWatch Logs.
 
-## Planned
+## Current scope
 
-DVC remote on S3, GitHub Actions CI/CD, deployment on AWS, monitoring.
+This repository implements batch model training/evaluation, a prediction API, containerization, CI tests, and deployment through GitHub Actions to ECS Fargate. Continuous training, automated model-promotion/rollback gates, and CloudWatch alarms/metrics dashboards are not part of the current implementation.
