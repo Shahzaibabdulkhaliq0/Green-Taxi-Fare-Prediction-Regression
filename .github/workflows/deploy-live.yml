@@ -1,0 +1,74 @@
+name: Green Taxi Live Deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app.py"
+      - "requirements-streamlit.txt"
+      - "Dockerfile.streamlit"
+      - "Dockerfile.streamlit.dockerignore"
+      - "ecs-live-task-definition.json"
+      - ".github/workflows/deploy-live.yml"
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-north-1
+  ECR_REPOSITORY: green-taxi-live-frontend
+  ECS_CLUSTER: green-taxi-live-cluster
+  ECS_SERVICE: green-taxi-live-service
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Configure AWS credentials using GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: arn:aws:iam::010928224571:role/green-taxi-live-github-actions
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push Streamlit frontend image
+        id: build-frontend
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          IMAGE="$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          docker build -f Dockerfile.streamlit -t "$IMAGE" .
+          docker push "$IMAGE"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Render ECS task definition with new frontend image
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: ecs-live-task-definition.json
+          container-name: green-taxi-live-frontend
+          image: ${{ steps.build-frontend.outputs.image }}
+
+      - name: Deploy live application to ECS
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.task-def.outputs.task-definition }}
+          service: ${{ env.ECS_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          desired-count: 1
+          wait-for-service-stability: true
+          wait-max-delay-seconds: 15
