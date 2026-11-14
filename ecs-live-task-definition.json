@@ -1,0 +1,70 @@
+{
+  "family": "green-taxi-live-app",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "1024",
+  "memory": "4096",
+  "executionRoleArn": "arn:aws:iam::010928224571:role/green-taxi-live-ecs-execution-role",
+  "runtimePlatform": {
+    "cpuArchitecture": "X86_64",
+    "operatingSystemFamily": "LINUX"
+  },
+  "containerDefinitions": [
+    {
+      "name": "green-taxi-live-api",
+      "image": "010928224571.dkr.ecr.eu-north-1.amazonaws.com/green-taxi-live-api:latest",
+      "essential": true,
+      "cpu": 768,
+      "memory": 3072,
+      "portMappings": [
+        { "containerPort": 8000, "protocol": "tcp" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/green-taxi-live-api",
+          "awslogs-region": "eu-north-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    },
+    {
+      "name": "green-taxi-live-frontend",
+      "image": "010928224571.dkr.ecr.eu-north-1.amazonaws.com/green-taxi-live-frontend:latest",
+      "essential": true,
+      "cpu": 256,
+      "memory": 1024,
+      "dependsOn": [
+        { "containerName": "green-taxi-live-api", "condition": "HEALTHY" }
+      ],
+      "environment": [
+        { "name": "API_BASE_URL", "value": "http://127.0.0.1:8000" }
+      ],
+      "portMappings": [
+        { "containerPort": 8501, "protocol": "tcp" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/green-taxi-live-frontend",
+          "awslogs-region": "eu-north-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      },
+      "healthCheck": {
+        "command": ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8501/_stcore/health', timeout=3)\""],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 60
+      }
+    }
+  ]
+}
