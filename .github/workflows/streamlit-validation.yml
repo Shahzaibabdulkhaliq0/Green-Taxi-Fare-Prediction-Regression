@@ -1,0 +1,57 @@
+name: Green Taxi Streamlit Validation
+
+on:
+  push:
+    branches:
+      - main
+      - feature/streamlit-frontend
+    paths:
+      - "app.py"
+      - "requirements-streamlit.txt"
+      - "Dockerfile.streamlit"
+      - "Dockerfile.streamlit.dockerignore"
+      - ".github/workflows/streamlit-validation.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "app.py"
+      - "requirements-streamlit.txt"
+      - "Dockerfile.streamlit"
+      - "Dockerfile.streamlit.dockerignore"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-streamlit.txt
+
+      - name: Install frontend dependencies
+        run: pip install -r requirements-streamlit.txt
+
+      - name: Compile Python source
+        run: python -m compileall -q app.py
+
+      - name: Run Streamlit app smoke test
+        run: |
+          python - <<'PY'
+          from streamlit.testing.v1 import AppTest
+
+          app = AppTest.from_file("app.py").run(timeout=30)
+          assert not app.exception, app.exception
+          print("Streamlit app loaded successfully.")
+          PY
+
+      - name: Build frontend Docker image
+        run: docker build -f Dockerfile.streamlit -t green-taxi-live-frontend:test .
