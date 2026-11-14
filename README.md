@@ -422,3 +422,54 @@ Continuous Training is not part of the current scope.
 Google Cloud — [MLOps: Continuous delivery and automation pipelines in machine learning](https://docs.cloud.google.com/architecture/mlops-continuous-delivery-and-automation-pipelines-in-machine-learning).
 
 This project implements selected MLOps practices. It does not claim complete Google MLOps Level 1 or Level 2 maturity.
+
+## 16. Streamlit Frontend
+
+The Streamlit user interface is in `app.py`. It sends all 11 trip features to the FastAPI `/predict` endpoint; the model is loaded only by FastAPI.
+
+### Run locally
+
+Start the API in one terminal:
+
+```bash
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000
+```
+
+Install frontend dependencies and start Streamlit in a second terminal:
+
+```bash
+pip install -r requirements-streamlit.txt
+# PowerShell:
+$env:API_BASE_URL = "http://localhost:8000"
+streamlit run app.py
+```
+
+Open the local Streamlit URL printed in the terminal (normally `http://localhost:8501`).
+
+### Frontend container
+
+Build the standalone frontend image:
+
+```bash
+docker build -f Dockerfile.streamlit -t green-taxi-frontend:local .
+```
+
+Run it with the API URL:
+
+```bash
+docker run --rm -p 8501:8501 -e API_BASE_URL="http://host.docker.internal:8000" green-taxi-frontend:local
+```
+
+### Live AWS deployment
+
+The live application uses a separate ECS cluster, Fargate service, ALB, security groups, frontend ECR repository, IAM GitHub OIDC role, and CloudWatch log groups. The Streamlit and FastAPI processes run as separate containers in one Fargate task; the frontend calls the API over task-local networking.
+
+Infrastructure template: `infra/green-taxi-live-stack.yaml`
+
+Task definition: `ecs-live-task-definition.json`
+
+Validation workflow: `.github/workflows/streamlit-validation.yml`
+
+Live deployment workflow: `.github/workflows/deploy-live.yml`
+
+The live stack reuses the deployed V4 API image read-only. It does not update or replace any V4 resource. The initial ALB endpoint is HTTP; HTTPS requires a domain name and ACM certificate.
