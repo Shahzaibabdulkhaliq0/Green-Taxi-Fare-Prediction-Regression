@@ -1,0 +1,4 @@
+# Keep the frontend build context small and exclude model/data files.
+**
+!app.py
+!requirements-streamlit.txt
