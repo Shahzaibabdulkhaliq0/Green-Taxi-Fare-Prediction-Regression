@@ -12,7 +12,7 @@
   "containerDefinitions": [
     {
       "name": "green-taxi-live-api",
-      "image": "010928224571.dkr.ecr.eu-north-1.amazonaws.com/green-taxi-live-api:latest",
+      "image": "010928224571.dkr.ecr.eu-north-1.amazonaws.com/green-taxi-v4-api:8368ead195ca25a4bdcace640743ae56802beab1-43578691039-1",
       "essential": true,
       "cpu": 768,
       "memory": 3072,
