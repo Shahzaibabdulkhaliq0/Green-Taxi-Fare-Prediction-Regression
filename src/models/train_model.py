@@ -25,18 +25,26 @@ from sklearn.compose import ColumnTransformer
 # Cross-validation
 from sklearn.model_selection import cross_val_score
 
+# MLFlow : Start
+import sys
 
-# Project root
-project_root = Path(__file__).resolve().parents[2]
+# Add project root to Python import path
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.tracking.mlflow_utils import log_model_comparison
+# MLflow : END
 
 # Load configuration
-with open(project_root / "params.yaml") as file:
+with open(PROJECT_ROOT / "params.yaml") as file:
     params = yaml.safe_load(file)["train_model"]
 
 # Project folders
-processed_folder = project_root / "data" / "processed"
-models_folder = project_root / "models"
-reports_folder = project_root / "reports"
+processed_folder = PROJECT_ROOT / "data" / "processed"
+models_folder = PROJECT_ROOT / "models"
+reports_folder = PROJECT_ROOT / "reports"
 
 # Load ONLY training data.
 # test.csv is reserved for final evaluation.
@@ -154,6 +162,16 @@ comparison_df.to_csv(
     reports_folder / "model_comparison.csv",
     index=False
 )
+
+## Start MLFlow From Here
+
+log_model_comparison(
+    results=results,
+    selected_model=best_model_name,
+    cv_folds=params["cv_folds"]
+)
+
+## MLFlow END Here
 
 # Save selected model name
 (models_folder / "best_model_name.txt").write_text(best_model_name)

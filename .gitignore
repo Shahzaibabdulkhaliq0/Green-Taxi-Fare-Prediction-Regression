@@ -93,3 +93,8 @@ target/
 
 __pycache__
 .pytest_cache
+
+# MLflow local tracking database and artifacts
+mlflow.db
+mlflow.db-journal
+mlruns/

@@ -20,17 +20,24 @@ import yaml
 # Error metrics
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
-# The project folder is two folders above this file
-project_root = Path(__file__).resolve().parents[2]
+# MLFlow
+import sys
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.tracking.mlflow_utils import log_evaluation_metrics
 
 # Read the settings from params.yaml
-with open(project_root / "params.yaml") as file:
+with open(PROJECT_ROOT / "params.yaml") as file:
     params = yaml.safe_load(file)["train_model"]
 
 # Folders for the data, the saved models and the reports
-processed_folder = project_root / "data" / "processed"
-models_folder = project_root / "models"
-reports_folder = project_root / "reports"
+processed_folder = PROJECT_ROOT / "data" / "processed"
+models_folder = PROJECT_ROOT / "models"
+reports_folder = PROJECT_ROOT / "reports"
 
 # Load the test data and split it into inputs (X) and the target (y)
 test = pd.read_csv(processed_folder / "test.csv")
@@ -63,4 +70,15 @@ reports_folder.mkdir(parents=True, exist_ok=True)
 # Save the scores
 with open(reports_folder / "metrics.json", "w") as file:
     json.dump({"test_mae": mae, "test_rmse": rmse, "test_r2": r2}, file, indent=4)
+
+# MLFLow Start from Here
+log_evaluation_metrics(
+    metrics={
+        "test_mae": mae,
+        "test_rmse": rmse,
+        "test_r2": r2
+    },
+    metrics_file=reports_folder / "metrics.json"
+)
+# MLFlow END Here
 print("Saved:", reports_folder / "metrics.json")

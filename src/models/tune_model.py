@@ -16,20 +16,29 @@ import pandas as pd
 # yaml: reads the settings file params.yaml
 import yaml
 
+# sys
+import sys
+
 # RandomizedSearchCV: tries random combinations of settings and keeps the best one
 from sklearn.model_selection import RandomizedSearchCV
 
-# The project folder is two folders above this file
-project_root = Path(__file__).resolve().parents[2]
+# MLFlow : Start
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+from src.tracking.mlflow_utils import log_tuned_model
+# MLFLow : END
 
 # Read the settings from params.yaml (nothing is hardcoded in this script)
-with open(project_root / "params.yaml") as file:
+with open(PROJECT_ROOT / "params.yaml") as file:
     params = yaml.safe_load(file)["tune_model"]
 
 # Folders for the data, the saved models and the reports
-processed_folder = project_root / "data" / "processed"
-models_folder = project_root / "models"
-reports_folder = project_root / "reports"
+processed_folder = PROJECT_ROOT / "data" / "processed"
+models_folder = PROJECT_ROOT / "models"
+reports_folder = PROJECT_ROOT / "reports"
 
 # Load the training data
 train = pd.read_csv(processed_folder / "train.csv")
@@ -78,4 +87,17 @@ joblib.dump(best_model, models_folder / "best_model.joblib")
 # Save the best settings in a readable file
 with open(reports_folder / "best_params.json", "w") as file:
     json.dump({"model": best_model_name, "best_params": random_search.best_params_, "best_cv_rmse": -random_search.best_score_}, file, indent=4, default=str)
+
+# MLFlow Start From Here
+registered_version = log_tuned_model(
+    best_model=best_model,
+    best_model_name=best_model_name,
+    best_params=random_search.best_params_,
+    best_cv_rmse=-random_search.best_score_,
+    best_params_file=reports_folder / "best_params.json"
+)
+
+print("Registered MLflow model version:", registered_version)
+# Mlflow END Here
+
 print("Saved the tuned model in:", models_folder)
