@@ -19,16 +19,6 @@ Parameters:
     Default: Shahzaibabdulkhaliq0/Green-Taxi-Fare-Prediction-Regression
 
 Resources:
-  ApiRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: green-taxi-live-api
-      ImageScanningConfiguration:
-        ScanOnPush: true
-      ImageTagMutability: IMMUTABLE
-      EncryptionConfiguration:
-        EncryptionType: AES256
-
   FrontendRepository:
     Type: AWS::ECR::Repository
     Properties:
@@ -95,7 +85,6 @@ Resources:
                   - ecr:PutImage
                   - ecr:UploadLayerPart
                 Resource:
-                  - !GetAtt ApiRepository.Arn
                   - !GetAtt FrontendRepository.Arn
               - Sid: PullDvcModel
                 Effect: Allow
@@ -137,11 +126,6 @@ Resources:
           FromPort: 80
           ToPort: 80
           CidrIp: 0.0.0.0/0
-      SecurityGroupEgress:
-        - IpProtocol: tcp
-          FromPort: 8501
-          ToPort: 8501
-          DestinationSecurityGroupId: !Ref TaskSecurityGroup
       Tags:
         - Key: Name
           Value: green-taxi-live-alb-sg
@@ -234,7 +218,7 @@ Resources:
         OperatingSystemFamily: LINUX
       ContainerDefinitions:
         - Name: green-taxi-live-api
-          Image: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/green-taxi-live-api:bootstrap
+          Image: 010928224571.dkr.ecr.eu-north-1.amazonaws.com/green-taxi-v4-api:8368ead195ca25a4bdcace640743ae56802beab1-43578691039-1
           Essential: true
           Cpu: 768
           Memory: 3072
@@ -295,7 +279,7 @@ Resources:
       Cluster: !Ref Cluster
       TaskDefinition: !Ref TaskDefinition
       LaunchType: FARGATE
-      DesiredCount: 1
+      DesiredCount: 0
       PlatformVersion: LATEST
       HealthCheckGracePeriodSeconds: 120
       DeploymentConfiguration:
@@ -328,7 +312,5 @@ Outputs:
     Value: !Ref Cluster
   EcsServiceName:
     Value: !GetAtt Service.Name
-  ApiEcrRepositoryUri:
-    Value: !GetAtt ApiRepository.RepositoryUri
   FrontendEcrRepositoryUri:
     Value: !GetAtt FrontendRepository.RepositoryUri
